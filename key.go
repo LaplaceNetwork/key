@@ -1,7 +1,6 @@
-package key
+package key // import "github.com/laplacenetwork/key"
 
 import (
-	"bytes"
 	"errors"
 	"io"
 
@@ -17,23 +16,33 @@ var (
 
 // Key blockchain key facade
 type Key interface {
-	Provider() Provider // key serivce driver
-	Address() string    // address display string
-	PriKey() []byte     // private key byte array
-	PubKey() []byte     // public key byte array
+	Address() string        // address display string
+	PriKey() []byte         // private key byte array
+	PubKey() []byte         // public key byte array
+	SetBytes(priKey []byte) // set private key bytes
 }
 
 // Provider the key service provider
 type Provider interface {
-	Name() string                                            // driver name
-	New() (Key, error)                                       // create new key
-	Encode(key Key, password string, writer io.Writer) error // encode key to an output stream
-	Decode(password string, reader io.Reader) (Key, error)   // decode key from an input stream
+	Name() string      // driver name
+	New() (Key, error) // create new key
 }
 
-// Register register provider
-func Register(name string, provider Provider) {
+// Encryptor .
+type Encryptor interface {
+	Name() string
+	Encrypt(key Key, attrs map[string]string, writer io.Writer) error
+	Decrypt(key Key, attrs map[string]string, reader io.Reader) error
+}
+
+// RegisterProvider register provider
+func RegisterProvider(name string, provider Provider) {
 	injector.Register(name, provider)
+}
+
+// RegisterEncryptor register key encrypto
+func RegisterEncryptor(name string, f Encryptor) {
+	injector.Register(name, f)
 }
 
 // New create key
@@ -46,29 +55,39 @@ func New(driver string) (Key, error) {
 	return provider.New()
 }
 
-// Decode decode .
-func Decode(driver string, password string, reader io.Reader) (Key, error) {
-	var provider Provider
-	if !injector.Get(driver, &provider) {
-		return nil, xerrors.Wrapf(ErrDriver, "unknown driver %s", driver)
+func getEncryptor(name string) (Encryptor, error) {
+	var ef Encryptor
+	if !injector.Get(name, &ef) {
+		return nil, xerrors.Wrapf(ErrDriver, "unknown encryptor %s", name)
 	}
 
-	return provider.Decode(password, reader)
+	return ef, nil
 }
 
-// Encode encode key
-func Encode(key Key, password string, writer io.Writer) error {
-	return key.Provider().Encode(key, password, writer)
-}
+// Encrypt .
+func Encrypt(encryptor string, key Key, attrs map[string]string, writer io.Writer) error {
+	ec, err := getEncryptor(encryptor)
 
-// EncodeToString .
-func EncodeToString(key Key, password string) (string, error) {
-
-	var buff bytes.Buffer
-
-	if err := key.Provider().Encode(key, password, &buff); err != nil {
-		return "", xerrors.Wrapf(err, "key provider %s decode error", key.Provider().Name())
+	if err != nil {
+		return err
 	}
 
-	return buff.String(), nil
+	return ec.Encrypt(key, attrs, writer)
+}
+
+// Decrypt .
+func Decrypt(encryptor string, key Key, attrs map[string]string, reader io.Reader) error {
+	ec, err := getEncryptor(encryptor)
+
+	if err != nil {
+		return err
+	}
+
+	err = ec.Decrypt(key, attrs, reader)
+
+	if err != nil {
+		return xerrors.Wrapf(err, "decrypt with encryptor %s failed", encryptor)
+	}
+
+	return nil
 }
