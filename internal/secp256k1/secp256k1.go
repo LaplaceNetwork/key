@@ -45,6 +45,10 @@ type secp256k1Curve struct {
 	elliptic.CurveParams
 }
 
+func (curve *secp256k1Curve) H() int {
+	return 1
+}
+
 func initSECP256K1() {
 	// http://www.secg.org/sec2-v2.pdf
 	secp256k1 = &secp256k1Curve{elliptic.CurveParams{Name: "secp256k1"}}
