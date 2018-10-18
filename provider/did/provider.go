@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"math/big"
+	"strings"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/laplacenetwork/key/internal/hash160"
@@ -188,6 +189,26 @@ func (provider *providerIml) Recover(sig []byte, hash []byte) (pubkey []byte, er
 	publicKey, _, err := recoverable.Recover(curve, signature, hash)
 
 	return ecdsax.PublicKeyBytes(publicKey), nil
+}
+
+func (provider *providerIml) ValidAddress(address string) bool {
+	tokens := strings.Split(address, ":")
+
+	if len(tokens) != 3 {
+		return false
+	}
+
+	if tokens[0] != "did" || tokens[1] != "lpt" {
+		return false
+	}
+
+	_, v, err := base58.CheckDecode(tokens[2])
+
+	if err != nil {
+		return false
+	}
+
+	return v == version
 }
 
 func init() {

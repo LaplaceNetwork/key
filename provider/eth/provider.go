@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"math/big"
+	"strings"
 
 	"github.com/dynamicgo/xerrors"
 	"github.com/openzknetwork/sha3"
@@ -190,6 +191,23 @@ func (provider *providerIml) Recover(sig []byte, hash []byte) (pubkey []byte, er
 	publicKey, _, err := recoverable.Recover(curve, signature, hash)
 
 	return ecdsax.PublicKeyBytes(publicKey), nil
+}
+
+func (provider *providerIml) ValidAddress(address string) bool {
+
+	address := strings.TrimPrefix(address, "0x")
+
+	if len(address) != 40 {
+		return false
+	}
+
+	_, err := hex.DecodeString(address)
+
+	if err != nil {
+		return false
+	}
+
+	return true
 }
 
 func init() {

@@ -30,6 +30,7 @@ type Provider interface {
 	New() (Key, error) // create new key
 	Verify(pubkey []byte, sig []byte, hash []byte) bool
 	PublicKeyToAddress(pubkey []byte) (string, error)
+	ValidAddress(address string) bool
 }
 
 // RecoverableProvider .
@@ -75,6 +76,16 @@ func From(driver string, key Key) (Key, error) {
 	toKey.SetBytes(key.PriKey())
 
 	return toKey, nil
+}
+
+// ValidAddress .
+func ValidAddress(driver string, address string) bool {
+	var provider Provider
+	if !injector.Get(driver, &provider) {
+		return nil, xerrors.Wrapf(ErrDriver, "unknown driver %s", driver)
+	}
+
+	return provider.ValidAddress(address)
 }
 
 // Recover recover public key from sig and hash
