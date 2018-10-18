@@ -16,10 +16,12 @@ var (
 
 // Key blockchain key facade
 type Key interface {
-	Address() string        // address display string
-	PriKey() []byte         // private key byte array
-	PubKey() []byte         // public key byte array
-	SetBytes(priKey []byte) // set private key bytes
+	Address() string                       // address display string
+	PriKey() []byte                        // private key byte array
+	PubKey() []byte                        // public key byte array
+	SetBytes(priKey []byte)                // set private key bytes
+	Sign(hashed []byte) ([]byte, error)    // sign the hashed message
+	Verify(sig []byte, hashed []byte) bool // verify sign
 }
 
 // Provider the key service provider

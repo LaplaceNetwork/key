@@ -81,6 +81,14 @@ func (key *didImpl) SetBytes(priKey []byte) {
 	key.address = pubKeyToAddress(&key.key.PublicKey)
 }
 
+func (key *didImpl) Sign(hashed []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func (key *didImpl) Verify(sig []byte, hashed []byte) bool {
+	return false
+}
+
 type providerIml struct {
 }
 
