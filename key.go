@@ -79,13 +79,13 @@ func From(driver string, key Key) (Key, error) {
 }
 
 // ValidAddress .
-func ValidAddress(driver string, address string) bool {
+func ValidAddress(driver string, address string) (bool, error) {
 	var provider Provider
 	if !injector.Get(driver, &provider) {
-		return nil, xerrors.Wrapf(ErrDriver, "unknown driver %s", driver)
+		return false, xerrors.Wrapf(ErrDriver, "unknown driver %s", driver)
 	}
 
-	return provider.ValidAddress(address)
+	return provider.ValidAddress(address), nil
 }
 
 // Recover recover public key from sig and hash
