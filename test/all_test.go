@@ -19,6 +19,20 @@ func TestEthKey(t *testing.T) {
 	println("address", k.Address())
 }
 
+func TestDidKey(t *testing.T) {
+	k, err := key.New("eth")
+
+	require.NoError(t, err)
+
+	println("address", k.Address())
+
+	did, err := key.From("did", k)
+
+	require.NoError(t, err)
+
+	println("address", did.Address())
+}
+
 func TestWeb3Encryptor(t *testing.T) {
 	k, err := key.New("eth")
 

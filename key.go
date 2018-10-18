@@ -30,14 +30,13 @@ type Provider interface {
 
 // Encryptor .
 type Encryptor interface {
-	Name() string
 	Encrypt(key Key, attrs map[string]string, writer io.Writer) error
 	Decrypt(key Key, attrs map[string]string, reader io.Reader) error
 }
 
 // RegisterProvider register provider
-func RegisterProvider(name string, provider Provider) {
-	injector.Register(name, provider)
+func RegisterProvider(provider Provider) {
+	injector.Register(provider.Name(), provider)
 }
 
 // RegisterEncryptor register key encrypto
@@ -53,6 +52,19 @@ func New(driver string) (Key, error) {
 	}
 
 	return provider.New()
+}
+
+// From create key from exist key
+func From(driver string, key Key) (Key, error) {
+	toKey, err := New(driver)
+
+	if err != nil {
+		return nil, err
+	}
+
+	toKey.SetBytes(key.PriKey())
+
+	return toKey, nil
 }
 
 func getEncryptor(name string) (Encryptor, error) {

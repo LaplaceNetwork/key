@@ -1,84 +1,81 @@
-package eth
+// Package did Ontology Distributed Identification Protocol impelement
+package did
 
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"encoding/hex"
+	"crypto/sha256"
 	"io"
 
-	"github.com/dynamicgo/xerrors"
-	"github.com/openzknetwork/sha3"
+	"github.com/btcsuite/btcutil/base58"
+	"github.com/laplacenetwork/key/internal/hash160"
 
+	"github.com/dynamicgo/xerrors"
 	"github.com/laplacenetwork/key"
 	"github.com/laplacenetwork/key/internal/ecdsax"
 	"github.com/laplacenetwork/key/internal/secp256k1"
 )
 
+var version = byte(18)
+
 func pubKeyToAddress(pub *ecdsa.PublicKey) string {
+
 	pubBytes := ecdsax.PublicKeyBytes(pub)
 
-	hasher := sha3.NewKeccak256()
+	var nonce []byte
 
-	hasher.Write(pubBytes[1:])
-
-	pubBytes = hasher.Sum(nil)[12:]
-
-	if len(pubBytes) > 20 {
-		pubBytes = pubBytes[len(pubBytes)-20:]
+	if len(pubBytes) < 32 {
+		nonce = make([]byte, 32)
+		copy(nonce[:], pubBytes)
+	} else {
+		nonce = pubBytes[:32]
 	}
 
-	address := make([]byte, 20)
+	hashed := hash160.Hash160(nonce)
 
-	copy(address[20-len(pubBytes):], pubBytes)
+	hasher := sha256.New()
 
-	unchecksummed := hex.EncodeToString(address)
+	hasher.Write(hashed)
 
-	sha := sha3.NewKeccak256()
+	sum := hasher.Sum(nil)
 
-	sha.Write([]byte(unchecksummed))
+	hasher.Reset()
 
-	hash := sha.Sum(nil)
+	hasher.Write(sum)
 
-	result := []byte(unchecksummed)
+	sum = hasher.Sum(nil)
 
-	for i := 0; i < len(result); i++ {
-		hashByte := hash[i/2]
-		if i%2 == 0 {
-			hashByte = hashByte >> 4
-		} else {
-			hashByte &= 0xf
-		}
-		if result[i] > '9' && hashByte > 7 {
-			result[i] -= 32
-		}
-	}
+	sum = sum[:3]
 
-	return "0x" + string(result)
+	did := append(hashed, sum...)
+
+	return "did:lpt:" + base58.CheckEncode(did, version)
 }
 
-type keyImpl struct {
+type didImpl struct {
 	provider key.Provider
 	key      *ecdsa.PrivateKey
 	address  string // address
 }
 
-func (key *keyImpl) Address() string {
+func (key *didImpl) Address() string {
 	return key.address
 }
 
-func (key *keyImpl) Provider() key.Provider {
+func (key *didImpl) Provider() key.Provider {
 	return key.provider
 }
 
-func (key *keyImpl) PriKey() []byte {
+func (key *didImpl) PriKey() []byte {
 	return ecdsax.PrivateKeyBytes(key.key)
 }
 
-func (key *keyImpl) PubKey() []byte {
+func (key *didImpl) PubKey() []byte {
 	return ecdsax.PublicKeyBytes(&key.key.PublicKey)
 }
 
-func (key *keyImpl) SetBytes(priKey []byte) {
+func (key *didImpl) SetBytes(priKey []byte) {
+
 	key.key = ecdsax.BytesToPrivateKey(priKey, secp256k1.SECP256K1())
 
 	key.address = pubKeyToAddress(&key.key.PublicKey)
@@ -88,7 +85,7 @@ type providerIml struct {
 }
 
 func (provider *providerIml) Name() string {
-	return "eth"
+	return "did"
 }
 
 func (provider *providerIml) New() (key.Key, error) {
@@ -99,7 +96,7 @@ func (provider *providerIml) New() (key.Key, error) {
 		return nil, xerrors.Wrapf(err, "ecdsa GenerateKey(SECP256K1) error")
 	}
 
-	return &keyImpl{
+	return &didImpl{
 		provider: provider,
 		key:      privateKey,
 		address:  pubKeyToAddress(&privateKey.PublicKey),
@@ -109,7 +106,7 @@ func (provider *providerIml) New() (key.Key, error) {
 func (provider *providerIml) FromBytes(buff []byte) key.Key {
 	privateKey := ecdsax.BytesToPrivateKey(buff, secp256k1.SECP256K1())
 
-	return &keyImpl{
+	return &didImpl{
 		provider: provider,
 		key:      privateKey,
 		address:  pubKeyToAddress(&privateKey.PublicKey),
