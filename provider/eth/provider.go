@@ -195,7 +195,7 @@ func (provider *providerIml) Recover(sig []byte, hash []byte) (pubkey []byte, er
 
 func (provider *providerIml) ValidAddress(address string) bool {
 
-	address := strings.TrimPrefix(address, "0x")
+	address = strings.TrimPrefix(address, "0x")
 
 	if len(address) != 40 {
 		return false

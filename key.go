@@ -22,6 +22,7 @@ type Key interface {
 	PubKey() []byte                     // public key byte array
 	SetBytes(priKey []byte)             // set private key bytes
 	Sign(hashed []byte) ([]byte, error) // sign the hashed message
+	Provider() Provider                 // provider
 }
 
 // Provider the key service provider
