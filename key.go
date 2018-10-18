@@ -11,23 +11,31 @@ import (
 
 // Errors
 var (
-	ErrDriver = errors.New("unknown driver")
+	ErrDriver    = errors.New("unknown driver")
+	ErrPublicKey = errors.New("invalid public key")
 )
 
 // Key blockchain key facade
 type Key interface {
-	Address() string                       // address display string
-	PriKey() []byte                        // private key byte array
-	PubKey() []byte                        // public key byte array
-	SetBytes(priKey []byte)                // set private key bytes
-	Sign(hashed []byte) ([]byte, error)    // sign the hashed message
-	Verify(sig []byte, hashed []byte) bool // verify sign
+	Address() string                    // address display string
+	PriKey() []byte                     // private key byte array
+	PubKey() []byte                     // public key byte array
+	SetBytes(priKey []byte)             // set private key bytes
+	Sign(hashed []byte) ([]byte, error) // sign the hashed message
 }
 
 // Provider the key service provider
 type Provider interface {
 	Name() string      // driver name
 	New() (Key, error) // create new key
+	Verify(pubkey []byte, sig []byte, hash []byte) bool
+	PublicKeyToAddress(pubkey []byte) (string, error)
+}
+
+// RecoverableProvider .
+type RecoverableProvider interface {
+	Provider
+	Recover(sig []byte, hash []byte) (pubkey []byte, err error)
 }
 
 // Encryptor .
@@ -67,6 +75,36 @@ func From(driver string, key Key) (Key, error) {
 	toKey.SetBytes(key.PriKey())
 
 	return toKey, nil
+}
+
+// Recover recover public key from sig and hash
+func Recover(driver string, sig []byte, hash []byte) ([]byte, error) {
+	var provider RecoverableProvider
+	if !injector.Get(driver, &provider) {
+		return nil, xerrors.Wrapf(ErrDriver, "unknown driver %s", driver)
+	}
+
+	return provider.Recover(sig, hash)
+}
+
+// PublicKeyToAddress .
+func PublicKeyToAddress(driver string, pubkey []byte) (string, error) {
+	var provider Provider
+	if !injector.Get(driver, &provider) {
+		return "", xerrors.Wrapf(ErrDriver, "unknown driver %s", driver)
+	}
+
+	return provider.PublicKeyToAddress(pubkey)
+}
+
+// Verify .
+func Verify(driver string, pubkey []byte, sig []byte, hash []byte) (bool, error) {
+	var provider Provider
+	if !injector.Get(driver, &provider) {
+		return false, xerrors.Wrapf(ErrDriver, "unknown driver %s", driver)
+	}
+
+	return provider.Verify(pubkey, sig, hash), nil
 }
 
 func getEncryptor(name string) (Encryptor, error) {

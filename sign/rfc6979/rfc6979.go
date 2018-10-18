@@ -10,7 +10,7 @@ import (
 	"hash"
 	"math/big"
 
-	"github.com/laplacenetwork/key/internal/sign"
+	"github.com/laplacenetwork/key/sign"
 )
 
 var (

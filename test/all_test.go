@@ -33,6 +33,37 @@ func TestDidKey(t *testing.T) {
 	println("address", did.Address())
 }
 
+func TestSign(t *testing.T) {
+
+	data := []byte("hello world")
+
+	did, err := key.New("did")
+
+	require.NoError(t, err)
+
+	sig, err := did.Sign(data)
+
+	require.NoError(t, err)
+
+	pubkey, err := key.Recover("did", sig, data)
+
+	require.NoError(t, err)
+
+	require.Equal(t, pubkey, did.PubKey())
+
+	address, err := key.PublicKeyToAddress("did", pubkey)
+
+	require.NoError(t, err)
+
+	require.Equal(t, address, did.Address())
+
+	ok, err := key.Verify("did", nil, sig, data)
+
+	require.NoError(t, err)
+
+	require.True(t, ok)
+}
+
 func TestWeb3Encryptor(t *testing.T) {
 	k, err := key.New("eth")
 

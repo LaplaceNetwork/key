@@ -5,8 +5,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"math/big"
-
-	"github.com/laplacenetwork/key/internal/secp256k1"
 )
 
 // PublicKeyBytes .
@@ -14,7 +12,25 @@ func PublicKeyBytes(pub *ecdsa.PublicKey) []byte {
 	if pub == nil || pub.X == nil || pub.Y == nil {
 		return nil
 	}
-	return elliptic.Marshal(secp256k1.SECP256K1(), pub.X, pub.Y)
+	return elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+}
+
+// BytesToPublicKey .
+func BytesToPublicKey(curve elliptic.Curve, buff []byte) *ecdsa.PublicKey {
+
+	x, y := elliptic.Unmarshal(curve, buff)
+
+	if x == nil {
+		return nil
+	}
+
+	publicKey := new(ecdsa.PublicKey)
+
+	publicKey.X = x
+	publicKey.Y = y
+	publicKey.Curve = curve
+
+	return publicKey
 }
 
 // PrivateKeyBytes 。

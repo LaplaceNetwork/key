@@ -8,10 +8,8 @@ import (
 	"math/big"
 
 	"github.com/dynamicgo/xerrors"
-
-	"github.com/laplacenetwork/key/internal/sign/rfc6979"
-
-	"github.com/laplacenetwork/key/internal/sign"
+	"github.com/laplacenetwork/key/sign"
+	"github.com/laplacenetwork/key/sign/rfc6979"
 )
 
 func isOdd(a *big.Int) bool {

@@ -4,7 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
-	"io"
+	"math/big"
 
 	"github.com/dynamicgo/xerrors"
 	"github.com/openzknetwork/sha3"
@@ -12,6 +12,8 @@ import (
 	"github.com/laplacenetwork/key"
 	"github.com/laplacenetwork/key/internal/ecdsax"
 	"github.com/laplacenetwork/key/internal/secp256k1"
+	"github.com/laplacenetwork/key/sign"
+	"github.com/laplacenetwork/key/sign/recoverable"
 )
 
 func pubKeyToAddress(pub *ecdsa.PublicKey) string {
@@ -85,11 +87,22 @@ func (key *keyImpl) SetBytes(priKey []byte) {
 }
 
 func (key *keyImpl) Sign(hashed []byte) ([]byte, error) {
-	return nil, nil
-}
 
-func (key *keyImpl) Verify(sig []byte, hashed []byte) bool {
-	return false
+	sig, err := recoverable.Sign(key.key, hashed, false)
+
+	if err != nil {
+		return nil, err
+	}
+
+	size := key.key.Curve.Params().BitSize / 8
+
+	buff := make([]byte, 2*size+1)
+
+	copy(buff, sig.R.Bytes()[:size])
+	copy(buff[size:], sig.S.Bytes()[:size])
+	buff[2*size] = sig.V.Bytes()[0]
+
+	return buff, nil
 }
 
 type providerIml struct {
@@ -97,6 +110,31 @@ type providerIml struct {
 
 func (provider *providerIml) Name() string {
 	return "eth"
+}
+
+func (provider *providerIml) Verify(pubkey []byte, sig []byte, hash []byte) bool {
+
+	curve := secp256k1.SECP256K1()
+
+	size := curve.Params().BitSize / 8
+
+	if len(sig) != 2*size+1 {
+		return false
+	}
+
+	signature := &sign.Signature{
+		R: new(big.Int).SetBytes(sig[:size]),
+		S: new(big.Int).SetBytes(sig[size : 2*size]),
+		V: new(big.Int).SetBytes(sig[2*size:]),
+	}
+
+	publicKey, _, err := recoverable.Recover(curve, signature, hash)
+
+	if err != nil {
+		return false
+	}
+
+	return signature.Verfiy(publicKey, hash)
 }
 
 func (provider *providerIml) New() (key.Key, error) {
@@ -124,12 +162,34 @@ func (provider *providerIml) FromBytes(buff []byte) key.Key {
 	}
 }
 
-func (provider *providerIml) Encode(key key.Key, password string, writer io.Writer) error {
-	return nil
+func (provider *providerIml) PublicKeyToAddress(pubkey []byte) (string, error) {
+	publicKey := ecdsax.BytesToPublicKey(secp256k1.SECP256K1(), pubkey)
+
+	if nil == pubkey {
+		return "", xerrors.Wrapf(key.ErrPublicKey, "decode public key error")
+	}
+
+	return pubKeyToAddress(publicKey), nil
 }
 
-func (provider *providerIml) Decode(password string, reader io.Reader) (key.Key, error) {
-	return nil, nil
+func (provider *providerIml) Recover(sig []byte, hash []byte) (pubkey []byte, err error) {
+	curve := secp256k1.SECP256K1()
+
+	size := curve.Params().BitSize / 8
+
+	if len(sig) != 2*size+1 {
+		return nil, xerrors.Wrapf(key.ErrPublicKey, " public key length error")
+	}
+
+	signature := &sign.Signature{
+		R: new(big.Int).SetBytes(sig[:size]),
+		S: new(big.Int).SetBytes(sig[size : 2*size]),
+		V: new(big.Int).SetBytes(sig[2*size:]),
+	}
+
+	publicKey, _, err := recoverable.Recover(curve, signature, hash)
+
+	return ecdsax.PublicKeyBytes(publicKey), nil
 }
 
 func init() {
